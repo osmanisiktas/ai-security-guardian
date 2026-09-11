@@ -1,0 +1,56 @@
+/* Antivirus Style Warning Banner */
+#ai-guardian-overlay {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 999999;
+  width: 380px;
+  background-color: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.4);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#ai-guardian-overlay h4 {
+  margin: 0 0 8px 0;
+  color: #f87171;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#ai-guardian-warnings {
+  background: #1e293b;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 10px 0;
+  border-left: 3px solid #f87171;
+  color: #cbd5e1;
+}
+
+.ai-guardian-btn-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ai-guardian-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.ai-guardian-btn-mask { background-color: #10b981; color: #000; }
+.ai-guardian-btn-ignore { background-color: #334155; color: #cbd5e1; }
+.ai-guardian-btn-cancel { background-color: #ef4444; color: #fff; }
