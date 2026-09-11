@@ -1,99 +1,144 @@
-const PATTERNS = {
-  NATIONAL_ID_TR: {
-    regex: /\b[1-9][0-9]{10}\b/g,
-    label: "National ID (TCKN)",
-    token: "[REDACTED_TCKN]",
-    compliance: "KVKK, GDPR"
-  },
-  SSN_US: {
-    regex: /\b(?!000|666)[0-8][0-9]{2}-(?!00)[0-9]{2}-(?!0000)[0-9]{4}\b/g,
-    label: "Social Security Number (SSN)",
-    token: "[REDACTED_SSN]",
-    compliance: "HIPAA, CCPA, GDPR"
-  },
-  CREDIT_CARD: {
-    regex: /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})\b/g,
-    label: "Credit Card",
-    token: "[REDACTED_CREDIT_CARD]",
-    compliance: "PCI-DSS"
-  },
-  EMAIL: {
-    regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-    label: "Email Address",
-    token: "[REDACTED_EMAIL]",
-    compliance: "GDPR, HIPAA, CCPA, KVKK"
-  },
-  API_KEY: {
-    regex: /\b(sk-[a-zA-Z0-9_\-]{20,})\b/g,
-    label: "API Key",
-    token: "[REDACTED_API_KEY]",
-    compliance: "OWASP LLM06, MITRE ATLAS"
-  }
+// AI Security Guardian - Advanced Background Worker
+
+const ENTROPY_THRESHOLD = 4.5;
+
+const RULES = {
+  // DLP Patterns
+  TCKN: /\b[1-9]\d{10}\b/g,
+  CREDIT_CARD: /\b(?:\d[ -]*?){13,16}\b/g,
+  EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+  OPENAI_KEY: /\bsk-[a-zA-Z0-9T3BlbkFJ]{20,}\b|\bsk-proj-[a-zA-Z0-9_-]{20,}\b/g,
+  AWS_KEY: /\b(AKIA|ASIA)[0-9A-Z]{16}\b/g,
+  GITHUB_TOKEN: /\bghp_[a-zA-Z0-9]{36}\b/g,
+  JWT_TOKEN: /\beyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\b/g,
+  PRIVATE_KEY: /-----BEGIN (RSA|EC|OPENSSH|DSA)? PRIVATE KEY-----[\s\S]*?-----END \1 PRIVATE KEY-----/g,
+  IBAN: /\bTR\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/gi,
+  IPV4: /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g,
+
+  // OWASP LLM01 - Prompt Injection / Jailbreak Patterns
+  SYSTEM_PROMPT_EXTRACTION: /(ignore\s+all\s+previous\s+instructions|system\s+prompt|repeat\s+the\s+text\s+above|reveal\s+your\s+instructions)/i,
+  JAILBREAK_DAN: /(dan\s+mode|do\ privilege\ anything\ now|jailbreak|bypass\s+filter)/i
 };
 
-const INJECTION_PATTERNS = [
-  { regex: /ignore\s+(all\s+)?previous\s+instructions/i, type: "Jailbreak" },
-  { regex: /system\s+prompt/i, type: "System Prompt Extraction" },
-  { regex: /bypass\s+filters/i, type: "Filter Bypass" },
-  { regex: /override\s+rules/i, type: "Rule Override" },
-  { regex: /dan\s+mode/i, type: "DAN Mode (Roleplay)" },
-  { regex: /you\s+are\s+now\s+in\s+developer\s+mode/i, type: "Developer Mode" }
-];
+function calculateEntropy(str) {
+  if (!str) return 0;
+  const len = str.length;
+  const frequencies = {};
+  for (let char of str) {
+    frequencies[char] = (frequencies[char] || 0) + 1;
+  }
+  return Object.values(frequencies).reduce((sum, count) => {
+    const p = count / len;
+    return sum - p * Math.log2(p);
+  }, 0);
+}
 
-function logToSIEM(severity, eventType, targetSite, details) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    severity: severity,
-    event: eventType,
-    site: targetSite,
-    details: details
+function detectHighEntropyTokens(text) {
+  const words = text.split(/\s+/);
+  const detectedTokens = [];
+  
+  for (let word of words) {
+    const cleanWord = word.replace(/[^a-zA-Z0-9_-]/g, "");
+    if (cleanWord.length >= 20 && calculateEntropy(cleanWord) >= ENTROPY_THRESHOLD) {
+      detectedTokens.push(cleanWord);
+    }
+  }
+  return detectedTokens;
+}
+
+function inspectText(text) {
+  let warnings = [];
+  let sanitizedText = text;
+
+  // 1. Regex Bazlı Kontroller
+  if (RULES.TCKN.test(text)) {
+    warnings.push("TCKN Detected");
+    sanitizedText = sanitizedText.replace(RULES.TCKN, "[REDACTED_TCKN]");
+  }
+  if (RULES.CREDIT_CARD.test(text)) {
+    warnings.push("Credit Card Number Detected");
+    sanitizedText = sanitizedText.replace(RULES.CREDIT_CARD, "[REDACTED_CARD]");
+  }
+  if (RULES.EMAIL.test(text)) {
+    warnings.push("E-mail Address Detected");
+    sanitizedText = sanitizedText.replace(RULES.EMAIL, "[REDACTED_EMAIL]");
+  }
+  if (RULES.OPENAI_KEY.test(text)) {
+    warnings.push("OpenAI API Key Detected");
+    sanitizedText = sanitizedText.replace(RULES.OPENAI_KEY, "[REDACTED_API_KEY]");
+  }
+  if (RULES.AWS_KEY.test(text)) {
+    warnings.push("AWS Key Detected");
+    sanitizedText = sanitizedText.replace(RULES.AWS_KEY, "[REDACTED_AWS_KEY]");
+  }
+  if (RULES.GITHUB_TOKEN.test(text)) {
+    warnings.push("GitHub Token Detected");
+    sanitizedText = sanitizedText.replace(RULES.GITHUB_TOKEN, "[REDACTED_GITHUB_TOKEN]");
+  }
+  if (RULES.JWT_TOKEN.test(text)) {
+    warnings.push("JWT Token Detected");
+    sanitizedText = sanitizedText.replace(RULES.JWT_TOKEN, "[REDACTED_JWT]");
+  }
+  if (RULES.PRIVATE_KEY.test(text)) {
+    warnings.push("Private Key Detected");
+    sanitizedText = sanitizedText.replace(RULES.PRIVATE_KEY, "[REDACTED_PRIVATE_KEY]");
+  }
+  if (RULES.IBAN.test(text)) {
+    warnings.push("IBAN Detected");
+    sanitizedText = sanitizedText.replace(RULES.IBAN, "[REDACTED_IBAN]");
+  }
+
+  // 2. High Entropy (Rastgele Şifre/Token) Kontrolü
+  const entropyTokens = detectHighEntropyTokens(text);
+  if (entropyTokens.length > 0) {
+    warnings.push("High-Entropy Secret / Token Detected");
+    entropyTokens.forEach(token => {
+      sanitizedText = sanitizedText.replace(token, "[REDACTED_SECRET]");
+    });
+  }
+
+  // 3. Prompt Injection Kontrolleri
+  if (RULES.SYSTEM_PROMPT_EXTRACTION.test(text)) {
+    warnings.push("Prompt Injection: System Prompt Extraction Attempt");
+  }
+  if (RULES.JAILBREAK_DAN.test(text)) {
+    warnings.push("Prompt Injection: Jailbreak Attempt (DAN Mode)");
+  }
+
+  return {
+    isViolation: warnings.length > 0,
+    warnings: warnings,
+    sanitizedPrompt: sanitizedText
   };
-  console.log(`🛡️ [SIEM AUDIT TRAIL] [${severity}]`, logEntry);
-  chrome.storage.local.get({ siem_logs: [] }, (result) => {
-    const logs = result.siem_logs;
-    logs.push(logEntry);
-    chrome.storage.local.set({ siem_logs: logs });
+}
+
+function updateAuditStats(warningsCount) {
+  chrome.storage.local.get(["blocked_count"], (result) => {
+    const current = result.blocked_count || 0;
+    chrome.storage.local.set({ blocked_count: current + warningsCount });
   });
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "INSPECT_PROMPT") {
-    const rawPrompt = request.prompt;
-    const targetSite = request.site;
-    let sanitizedPrompt = rawPrompt;
-    let warnings = [];
-    let hasViolation = false;
+    const analysis = inspectText(request.prompt);
 
-    for (const [key, config] of Object.entries(PATTERNS)) {
-      if (config.regex.test(rawPrompt)) {
-        hasViolation = true;
-        warnings.push(`[${config.compliance}] - Sensitive Data (${config.label}) detected.`);
-        sanitizedPrompt = sanitizedPrompt.replace(config.regex, config.token);
-        logToSIEM("HIGH", "DATA_LEAKAGE_PREVENTION", targetSite, { entity: config.label, framework: config.compliance });
-      }
-      config.regex.lastIndex = 0;
-    }
-
-    for (const pattern of INJECTION_PATTERNS) {
-      if (pattern.regex.test(rawPrompt)) {
-        hasViolation = true;
-        warnings.push(`[OWASP LLM01, MITRE ATLAS] - Injection Pattern: '${pattern.type}'`);
-        logToSIEM("CRITICAL", "PROMPT_INJECTION_DETECTED", targetSite, { type: pattern.type });
-      }
-    }
-
-    if (hasViolation) {
+    if (analysis.isViolation) {
+      updateAuditStats(analysis.warnings.length);
       sendResponse({
         success: true,
         data: {
           action: "WARN",
-          warnings: warnings,
-          sanitized_prompt: sanitizedPrompt,
-          target_site: targetSite
+          warnings: analysis.warnings,
+          sanitized_prompt: analysis.sanitizedPrompt,
+          target_site: request.site
         }
       });
     } else {
-      sendResponse({ success: true, data: { action: "ALLOW" } });
+      sendResponse({
+        success: true,
+        data: { action: "ALLOW" }
+      });
     }
   }
   return true;
