@@ -1,10 +1,10 @@
 # 🛡️ AI Security Guardian - Browser Extension
 
-AI Security Guardian is a privacy-first browser extension designed to audit and secure data sent to Large Language Model (LLM) platforms, such as ChatGPT, Claude, and Gemini, in real time. It performs client-side Data Loss Prevention (DLP) and Prompt Injection protection before sensitive information leaves the user's browser.
+AI Security Guardian is a privacy-first browser extension designed to audit and secure data sent to LLM platforms, such as ChatGPT, Claude, and Gemini in real time. It performs client-side Data Loss Prevention and Prompt Injection protection before sensitive information leaves the user's browser.
 
 ## 🚀 Features
 
-- **Advanced DLP (Data Loss Prevention):** Automatically detects national IDs (TCKN), credit card numbers, email addresses, IBANs, IPv4 addresses, OpenAI/AWS API keys, GitHub tokens, JWTs, and Private Keys (PEM format).
+- **Advanced DLP (Data Loss Prevention):** Automatically detects national IDs, credit card numbers, email addresses, IBANs, IPv4 addresses, OpenAI/AWS API keys, GitHub tokens, JWTs, and Private Keys.
 - **Shannon Entropy Analysis:** Detects high-entropy, unstructured secrets, tokens, and complex passwords dynamically in the background.
 - **Prompt Injection & Jailbreak Protection:** Intercepts System Prompt Extraction and DAN Mode / Jailbreak attempts based on OWASP LLM01 guidelines.
 - **Flexible Modal Interception:** Prompts the user with "Mask & Send" (redacts sensitive entities), "Allow & Send" (bypasses restriction), or "Cancel" upon rule violations.
